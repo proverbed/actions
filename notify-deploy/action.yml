@@ -9,7 +9,7 @@ inputs:
     description: Telegram chat ID (TELEGRAM_CHAT_ID)
     required: true
   status:
-    description: Job status — pass ${{ job.status }}
+    description: "Job status — pass job.status from the caller workflow"
     required: true
   label:
     description: Human-readable deploy label (e.g. "Cloud Functions", "Hosting")
