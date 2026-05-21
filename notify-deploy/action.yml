@@ -1,0 +1,33 @@
+name: Notify Telegram — Deploy
+description: Send a Telegram message on production deploy success or failure.
+
+inputs:
+  token:
+    description: Telegram bot token (TELEGRAM_BOT_TOKEN)
+    required: true
+  chat_id:
+    description: Telegram chat ID (TELEGRAM_CHAT_ID)
+    required: true
+  status:
+    description: Job status — pass ${{ job.status }}
+    required: true
+  label:
+    description: Human-readable deploy label (e.g. "Cloud Functions", "Hosting")
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Send Telegram notification
+      uses: appleboy/telegram-action@v1.0.0
+      with:
+        to: ${{ inputs.chat_id }}
+        token: ${{ inputs.token }}
+        format: markdown
+        message: |
+          ${{ inputs.status == 'success' && '✅' || '❌' }} *${{ github.repository }}*
+          ${{ inputs.label != '' && format('Deploy: {0}', inputs.label) || format('Job: {0}', github.job) }}
+          Ref: `${{ github.ref_name }}`
+          By: ${{ github.actor }}
+          ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
