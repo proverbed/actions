@@ -19,15 +19,28 @@ inputs:
 runs:
   using: composite
   steps:
+    # Plain curl rather than a Docker-based action: container actions only run on
+    # Linux runners, and callers also run on self-hosted macOS runners.
     - name: Send Telegram notification
-      uses: appleboy/telegram-action@v1.0.0
-      with:
-        to: ${{ inputs.chat_id }}
-        token: ${{ inputs.token }}
-        format: markdown
-        message: |
-          ${{ inputs.status == 'success' && '✅' || '❌' }} *${{ github.repository }}*
-          ${{ inputs.label != '' && format('Deploy: {0}', inputs.label) || format('Job: {0}', github.job) }}
-          Ref: `${{ github.ref_name }}`
-          By: ${{ github.actor }}
-          ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      shell: bash
+      env:
+        TG_TOKEN: ${{ inputs.token }}
+        TG_CHAT_ID: ${{ inputs.chat_id }}
+        STATUS: ${{ inputs.status }}
+        LABEL: ${{ inputs.label }}
+        JOB: ${{ github.job }}
+        REPO: ${{ github.repository }}
+        REF_NAME: ${{ github.ref_name }}
+        ACTOR: ${{ github.actor }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        if [ "$STATUS" = "success" ]; then icon="✅"; else icon="❌"; fi
+        if [ -n "$LABEL" ]; then what="Deploy: $LABEL"; else what="Job: $JOB"; fi
+        message=$(printf '%s *%s*\n%s\nRef: `%s`\nBy: %s\n%s' \
+          "$icon" "$REPO" "$what" "$REF_NAME" "$ACTOR" "$RUN_URL")
+        curl --silent --show-error --fail-with-body \
+          "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+          --data-urlencode "chat_id=${TG_CHAT_ID}" \
+          --data-urlencode "parse_mode=Markdown" \
+          --data-urlencode "text=${message}" \
+          > /dev/null
